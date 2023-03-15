@@ -5,15 +5,17 @@ TermGPT
 Your in-terminal LLM assistant.
 """
 
+from io import StringIO
 import os
-import click
-import openai as ai
 
 from rich.console import Console
+import openai as ai
+import pydoc
+import click
 
 
 ai.api_key = os.environ["OPENAI_API_KEY"]
-console: Console = Console()
+console = Console(file=StringIO(), force_terminal=True)
 
 
 class TermGPT:
@@ -53,6 +55,15 @@ You are allowed to use emojis using the format :emoji_name:
         }
     ]
 
+    @staticmethod
+    def _generate_content(response):
+        """
+        Generate content from the response.
+        """
+        lines = [x for x in response.splitlines() if x]
+        for line in lines:
+            console.print(line)
+
     @click.group()
     @staticmethod
     def cli() -> None:
@@ -64,9 +75,9 @@ You are allowed to use emojis using the format :emoji_name:
         return
 
     @cli.command()
-    @click.argument("prompt", type=str, required=True)
+    @click.argument("question", type=str, required=True)
     @staticmethod
-    def ask(question: str) -> None:
+    def ask(question) -> None:
         """
         Ask TermGPT a question.
         """
@@ -77,8 +88,10 @@ You are allowed to use emojis using the format :emoji_name:
         )
 
         response = response["choices"][0]["message"]["content"]  # type: ignore
+        TermGPT._generate_content(response)
 
-        console.print(response)
+        pydoc.pager(console.file.getvalue())  # type: ignore
+        console.file.close()  # type: ignore
 
 
 if __name__ == "__main__":
